@@ -17,8 +17,8 @@
    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
    <script type="text/javascript" type="text/javascript">
        // Our JavaScript code will go here
-        // const ros = new ROSLIB.Ros({ url: 'ws://137.110.215.74:9090' });
-		const ros = new ROSLIB.Ros({ url: 'ws://100.101.200.71:9090'})
+        const ros = new ROSLIB.Ros({ url: 'ws://137.110.215.74:9090' });
+		// const ros = new ROSLIB.Ros({ url: 'ws://100.101.200.71:9090'})
 		// When the Rosbridge server connects, fill the span with id "status" with "successful"
 		ros.on('connection', () => {
 			document.getElementById('status').innerHTML = 'successful';
@@ -34,15 +34,15 @@
 
 		const my_topic_listener = new ROSLIB.Topic({
 			ros,
-			name: '/my_topic',
+			name: '/quiz_q',
 			messageType: 'std_msgs/String',
 		});
 		// When we receive a message on /my_topic, add its data as a list item to the "messages" ul
 		my_topic_listener.subscribe((message) => {
-		const ul = document.getElementById('messages');
-		const newMessage = document.createElement('li');
-		newMessage.appendChild(document.createTextNode(message.data));
-		ul.appendChild(newMessage);
+			const ul = document.getElementById('messages');
+			const newMessage = document.createElement('li');
+			newMessage.appendChild(document.createTextNode(message.data));
+			ul.appendChild(newMessage);
 		});
    </script>
  </body>
