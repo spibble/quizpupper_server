@@ -13,11 +13,15 @@
    <p>View the full tutorial at <a href="/blog/using-rosbridge-with-ros1" target="_blank">Using Rosbridge with ROS 1</a> or <a href="/blog/using-rosbridge-with-ros2" target="_blank">Using Rosbridge with ROS 2</a>.</p>
    <hr/>
    <p>Connection: <span id="status" style="font-weight: bold;">N/A</span></p>
-   <p><code>/my_topic</code> messages received: <ul id="messages" style="font-weight: bold;"></ul></p>
+   <p>IP Address: <input id="ip-input" type="text" value="137.110.215.129:9090" size="30" />
+	<button onclick="reconnect();">Connect</button>
+   </p>
+   <p id="question" style="font-size: 1.2em; font-weight: bold;">Waiting for question...</p>
+	<ul id="answers"></ul>
    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
    <script type="text/javascript" type="text/javascript">
        // Our JavaScript code will go here
-        const ros = new ROSLIB.Ros({ url: 'ws://137.110.215.74:9090' });
+        let ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
 		// const ros = new ROSLIB.Ros({ url: 'ws://100.101.200.71:9090'})
 		// When the Rosbridge server connects, fill the span with id "status" with "successful"
 		ros.on('connection', () => {
@@ -32,18 +36,58 @@
 			document.getElementById('status').innerHTML = 'closed';
 		});
 
-		const my_topic_listener = new ROSLIB.Topic({
+		const question_listener = new ROSLIB.Topic({
 			ros,
-			name: '/quiz_q',
+			name: '/quiz_question',
 			messageType: 'std_msgs/String',
 		});
-		// When we receive a message on /my_topic, add its data as a list item to the "messages" ul
-		my_topic_listener.subscribe((message) => {
+
+		const response_publisher = new ROSLIB.Topic({
+			ros,
+			name: '/quiz_response',
+			messageType: 'std_msgs/String',
+		});
+
+		let messageCount = 0;
+
+		question_listener.subscribe((message) => {
+			console.log(message.data)
+			if (messageCount % 5 === 0) {
+				// ?
+				document.getElementById('question').innerHTML = message.data;
+				document.getElementById('answers').innerHTML = '';
+			} else {
+				// answer
+				const ul = document.getElementById('answers');
+				const li = document.createElement('li');
+				li.textContent = message.data;
+				ul.appendChild(li);
+			}
+			messageCount++;
+		});
+
+		/* When we receive a message on /my_topic, add its data as a list item to the "messages" ul
+		question_listener.subscribe((message) => {
 			const ul = document.getElementById('messages');
 			const newMessage = document.createElement('li');
 			newMessage.appendChild(document.createTextNode(message.data));
 			ul.appendChild(newMessage);
+
+			let retMessage = new ROSLIB.Message({
+				data : "ok :thumbs_up:"
+			});
+
+			response_publisher.publish(retMessage)
 		});
+		*/
+
+		function reconnect() {
+			ros.socket.close();
+			ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
+			ros.on('connection', () => { document.getElementById('status').innerHTML = 'successful'; });
+			ros.on('error', (error) => { document.getElementById('status').innerHTML = `errored out (${error})`; });
+			ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
+		}
    </script>
  </body>
 </html>
