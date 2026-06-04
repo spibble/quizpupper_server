@@ -1,93 +1,179 @@
 <!DOCTYPE html>
-<html>
- <head>
-   <meta charset="utf-8" />
- </head>
- <body>
-   <h1>Rosbridge demo</h1>
-   <p>To see this page update:</p>
-   <ul>
-     <li>Run a Rosbridge connection at <code>ws://localhost:9090</code></li>
-     <li>Start publishing ROS messages to <code>/my_topic</code></li>
-   </ul>
-   <p>View the full tutorial at <a href="/blog/using-rosbridge-with-ros1" target="_blank">Using Rosbridge with ROS 1</a> or <a href="/blog/using-rosbridge-with-ros2" target="_blank">Using Rosbridge with ROS 2</a>.</p>
-   <hr/>
-   <p>Connection: <span id="status" style="font-weight: bold;">N/A</span></p>
-   <p>IP Address: <input id="ip-input" type="text" value="137.110.215.129:9090" size="30" />
-	<button onclick="reconnect();">Connect</button>
-   </p>
-   <p id="question" style="font-size: 1.2em; font-weight: bold;">Waiting for question...</p>
-	<ul id="answers"></ul>
-   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
-   <script type="text/javascript" type="text/javascript">
-       // Our JavaScript code will go here
-        let ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
-		// const ros = new ROSLIB.Ros({ url: 'ws://100.101.200.71:9090'})
-		// When the Rosbridge server connects, fill the span with id "status" with "successful"
-		ros.on('connection', () => {
-			document.getElementById('status').innerHTML = 'successful';
-		});
-		// When the Rosbridge server experiences an error, fill the "status" span with the returned error
-		ros.on('error', (error) => {
-			document.getElementById('status').innerHTML = `errored out (${error})`;
-		});
-		// When the Rosbridge server shuts down, fill the "status" span with "closed"
-		ros.on('close', () => {
-			document.getElementById('status').innerHTML = 'closed';
-		});
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuizPupper | CSE 29 Spring 2026</title>
+  <link rel="stylesheet" href="assets/css/just-the-docs-default.css">
+  <style>
+    body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
 
-		const question_listener = new ROSLIB.Topic({
-			ros,
-			name: '/quiz_question',
-			messageType: 'std_msgs/String',
-		});
+    .site-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color, #eeebee);
+    }
 
-		const response_publisher = new ROSLIB.Topic({
-			ros,
-			name: '/quiz_response',
-			messageType: 'std_msgs/String',
-		});
+    .site-header img {
+      height: 48px;
+      width: auto;
+      flex-shrink: 0;
+    }
 
-		let messageCount = 0;
+    .status-row {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-color, #5c5962);
+    }
 
-		question_listener.subscribe((message) => {
-			console.log(message.data)
-			if (messageCount % 5 === 0) {
-				// ?
-				document.getElementById('question').innerHTML = message.data;
-				document.getElementById('answers').innerHTML = '';
-			} else {
-				// answer
-				const ul = document.getElementById('answers');
-				const li = document.createElement('li');
-				li.textContent = message.data;
-				ul.appendChild(li);
-			}
-			messageCount++;
-		});
+    .status-row input[type="text"] {
+      font-family: monospace;
+      font-size: 0.85rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--border-color, #eeebee);
+      border-radius: 4px;
+      background: var(--sidebar-bg, #f5f6fa);
+      color: var(--text-color, #5c5962);
+    }
 
-		/* When we receive a message on /my_topic, add its data as a list item to the "messages" ul
-		question_listener.subscribe((message) => {
-			const ul = document.getElementById('messages');
-			const newMessage = document.createElement('li');
-			newMessage.appendChild(document.createTextNode(message.data));
-			ul.appendChild(newMessage);
+    .status-row button {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.85rem;
+      border: 1px solid var(--border-color, #eeebee);
+      border-radius: 4px;
+      cursor: pointer;
+    }
 
-			let retMessage = new ROSLIB.Message({
-				data : "ok :thumbs_up:"
-			});
+    #status {
+      font-weight: 600;
+    }
 
-			response_publisher.publish(retMessage)
-		});
-		*/
+    #question {
+      font-size: 2rem;
+      margin: 2rem 0 1.5rem;
+      color: var(--text-color, #27262b);
+      min-height: 2rem;
+      text-align: center;
+    }
 
-		function reconnect() {
-			ros.socket.close();
-			ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
-			ros.on('connection', () => { document.getElementById('status').innerHTML = 'successful'; });
-			ros.on('error', (error) => { document.getElementById('status').innerHTML = `errored out (${error})`; });
-			ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
+    #answers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .answer-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+      border-radius: 8px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .answer-box.yellow { background-color: #eeff00; }
+    .answer-box.orange { background-color: #ffa136; }
+    .answer-box.pink   { background-color: #ff34cc; }
+    .answer-box.green  { background-color: #45ff38; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="https://cse29.site">
+      <img src="assets/cse29.png" alt="CSE 29 Logo" />
+    </a>
+  </header>
+
+  <h1>QuizPupper</h1>
+
+  <div class="status-row">
+    <span>IP:</span>
+    <input id="ip-input" type="text" value="137.110.215.129:9090" size="28" />
+    <button class="btn-blue" onclick="reconnect();">Connect</button><br>
+    <span>Connection: <span id="status">N/A</span></span><br>
+  </div>
+
+  <hr />
+
+  <p id="question">Waiting for question...</p>
+  <div id="answers"></div>
+
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+  <script type="text/javascript">
+    let ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
+
+    let question_listener;
+    let response_publisher;
+
+    function handleMessage(message) {
+		console.log("received:", message.data, "count:", messageCount);
+		console.log(message.data);
+		if (messageCount % 5 === 0) {
+			document.getElementById('question').innerHTML = message.data;
+			document.getElementById('answers').innerHTML = '';
+		} else {
+			const colonIdx = message.data.indexOf(':');
+			const color = message.data.substring(0, colonIdx).trim().toLowerCase();
+			const text = message.data.substring(colonIdx + 1).trim();
+
+			const box = document.createElement('div');
+			box.className = `answer-box ${color}`;
+			box.textContent = text;
+			document.getElementById('answers').appendChild(box);
 		}
-   </script>
- </body>
+		messageCount++;
+	}
+
+    ros.on('connection', () => {
+        document.getElementById('status').innerHTML = 'connected';
+
+        question_listener = new ROSLIB.Topic({
+            ros,
+            name: '/quiz_question',
+            messageType: 'std_msgs/String',
+        });
+
+        response_publisher = new ROSLIB.Topic({
+            ros,
+            name: '/quiz_response',
+            messageType: 'std_msgs/String',
+            });
+
+        question_listener.subscribe(handleMessage);
+    });
+    ros.on('error', (error) => { document.getElementById('status').innerHTML = `error (${error})`; });
+    ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
+
+    let messageCount = 0;
+
+    function reconnect() {
+    ros.socket.close();
+    ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
+    ros.on('connection', () => {
+        document.getElementById('status').innerHTML = 'connected';
+        question_listener = new ROSLIB.Topic({
+            ros,
+            name: '/quiz_question',
+            messageType: 'std_msgs/String',
+        });
+        question_listener.subscribe(handleMessage);
+    });
+    ros.on('error', (error) => { document.getElementById('status').innerHTML = `error (${error})`; });
+    ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
+}
+  </script>
+
+</body>
 </html>
