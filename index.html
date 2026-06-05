@@ -55,6 +55,24 @@
       font-weight: 600;
     }
 
+    .quiz-controls {
+      margin: 1.5rem 0;
+    }
+
+    .quiz-controls button {
+      font-size: 1rem;
+      padding: 0.5rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+    }
+
+    #quiz-area { display: none; }
+
+	#reset-btn  { display: none; }
+    #stop-btn  { display: none; }
+
     #question {
       font-size: 2rem;
       margin: 2rem 0 1.5rem;
@@ -107,8 +125,16 @@
 
   <hr />
 
-  <p id="question">Waiting for question...</p>
-  <div id="answers"></div>
+  <div class="quiz-controls">
+    <button id='start-btn' class="btn-blue" onclick="startQuiz();">Start quizzing!</button>
+	<button id='reset-btn' class="btn-blue" onclick="publish('reset');">Reset question</button>
+    <button id='stop-btn' class="btn"  onclick="stopQuiz();">Stop quizzing!</button>
+  </div>
+
+  <div id="quiz-area">
+    <p id="question"></p>
+    <div id="answers"></div>
+  </div>
 
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
   <script type="text/javascript">
@@ -116,63 +142,83 @@
 
     let question_listener;
     let response_publisher;
-
-    function handleMessage(message) {
-		console.log("received:", message.data, "count:", messageCount);
-		console.log(message.data);
-		if (messageCount % 5 === 0) {
-			document.getElementById('question').innerHTML = message.data;
-			document.getElementById('answers').innerHTML = '';
-		} else {
-			const colonIdx = message.data.indexOf(':');
-			const color = message.data.substring(0, colonIdx).trim().toLowerCase();
-			const text = message.data.substring(colonIdx + 1).trim();
-
-			const box = document.createElement('div');
-			box.className = `answer-box ${color}`;
-			box.textContent = text;
-			document.getElementById('answers').appendChild(box);
-		}
-		messageCount++;
-	}
-
-    ros.on('connection', () => {
-        document.getElementById('status').innerHTML = 'connected';
-
-        question_listener = new ROSLIB.Topic({
-            ros,
-            name: '/quiz_question',
-            messageType: 'std_msgs/String',
-        });
-
-        response_publisher = new ROSLIB.Topic({
-            ros,
-            name: '/quiz_response',
-            messageType: 'std_msgs/String',
-            });
-
-        question_listener.subscribe(handleMessage);
-    });
-    ros.on('error', (error) => { document.getElementById('status').innerHTML = `error (${error})`; });
-    ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
-
     let messageCount = 0;
 
-    function reconnect() {
-    ros.socket.close();
-    ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
+    function handleMessage(message) {
+      console.log("received:", message.data, "count:", messageCount);
+      if (messageCount % 5 === 0) {
+        document.getElementById('question').innerHTML = message.data;
+        document.getElementById('answers').innerHTML = '';
+      } else {
+        const colonIdx = message.data.indexOf(':');
+        const color = message.data.substring(0, colonIdx).trim().toLowerCase();
+        const text = message.data.substring(colonIdx + 1).trim();
+
+        const box = document.createElement('div');
+        box.className = `answer-box ${color}`;
+        box.textContent = text;
+        document.getElementById('answers').appendChild(box);
+      }
+      messageCount++;
+    }
+
+    function setupTopics() {
+      question_listener = new ROSLIB.Topic({
+        ros,
+        name: '/quiz_question',
+        messageType: 'std_msgs/String',
+      });
+
+      response_publisher = new ROSLIB.Topic({
+        ros,
+        name: '/quiz_response',
+        messageType: 'std_msgs/String',
+      });
+
+      question_listener.subscribe(handleMessage);
+    }
+
+    function publish(text) {
+      if (!response_publisher) return;
+      response_publisher.publish(new ROSLIB.Message({ data: text }));
+    }
+
+    function startQuiz() {
+      publish('start');
+      messageCount = 0;
+      document.getElementById('question').innerHTML = 'Waiting for question...';
+      document.getElementById('answers').innerHTML = '';
+      document.getElementById('quiz-area').style.display = 'block';
+      document.getElementById('start-btn').style.display = 'none';
+      document.getElementById('reset-btn').style.display = 'inline-block';
+	  document.getElementById('stop-btn').style.display = 'inline-block';
+    }
+
+    function stopQuiz() {
+      publish('stop');
+      document.getElementById('quiz-area').style.display = 'none';
+	  document.getElementById('reset-btn').style.display = 'none';
+      document.getElementById('stop-btn').style.display = 'none';
+      document.getElementById('start-btn').style.display = 'inline-block';
+    }
+
     ros.on('connection', () => {
-        document.getElementById('status').innerHTML = 'connected';
-        question_listener = new ROSLIB.Topic({
-            ros,
-            name: '/quiz_question',
-            messageType: 'std_msgs/String',
-        });
-        question_listener.subscribe(handleMessage);
+      document.getElementById('status').innerHTML = 'connected';
+      setupTopics();
     });
     ros.on('error', (error) => { document.getElementById('status').innerHTML = `error (${error})`; });
     ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
-}
+
+    function reconnect() {
+      ros.socket.close();
+      ros = new ROSLIB.Ros({ url: 'ws://' + document.getElementById('ip-input').value });
+      ros.on('connection', () => {
+        document.getElementById('status').innerHTML = 'connected';
+        setupTopics();
+      });
+      ros.on('error', (error) => { document.getElementById('status').innerHTML = `error (${error})`; });
+      ros.on('close', () => { document.getElementById('status').innerHTML = 'closed'; });
+    }
   </script>
 
 </body>
